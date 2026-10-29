@@ -239,15 +239,32 @@ const dictionary = {
 ========================================= */
 
 function getWordData(word) {
-
   const hsk5 = window.HSK5_DATA || {};
 
-  if (Object.prototype.hasOwnProperty.call(hsk5, word)) {
-    return hsk5[word];
+  function lookup(w) {
+    if (Object.prototype.hasOwnProperty.call(hsk5, w)) {
+      return hsk5[w];
+    }
+
+    if (Object.prototype.hasOwnProperty.call(dictionary, w)) {
+      return dictionary[w];
+    }
+
+    return null;
   }
 
-  if (Object.prototype.hasOwnProperty.call(dictionary, word)) {
-    return dictionary[word];
+  // 1. Ưu tiên tìm đúng từ gốc
+  let result = lookup(word);
+  if (result) return result;
+
+  // 2. Nếu PDF đọc lặp đôi từ, thử bỏ phần lặp
+  if (word.length % 2 === 0) {
+    const half = word.slice(0, word.length / 2);
+
+    if (half + half === word) {
+      result = lookup(half);
+      if (result) return result;
+    }
   }
 
   return null;
