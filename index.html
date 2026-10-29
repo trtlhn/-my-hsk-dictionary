@@ -238,36 +238,173 @@ const dictionary = {
    ƯU TIÊN HSK 5 TRƯỚC
 ========================================= */
 
-function getWordData(word) {
+/* =========================================
+   SỬA LỖI PDF ĐỌC LẶP CHỮ HÁN
+   ÁP DỤNG CHO TOÀN BỘ BẢNG PDF
+========================================= */
+
+function findWordData(word) {
+
   const hsk5 = window.HSK5_DATA || {};
 
-  function lookup(w) {
-    if (Object.prototype.hasOwnProperty.call(hsk5, w)) {
-      return hsk5[w];
-    }
-
-    if (Object.prototype.hasOwnProperty.call(dictionary, w)) {
-      return dictionary[w];
-    }
-
-    return null;
+  if (
+    Object.prototype.hasOwnProperty.call(hsk5, word)
+  ) {
+    return hsk5[word];
   }
 
-  // 1. Ưu tiên tìm đúng từ gốc
-  let result = lookup(word);
-  if (result) return result;
-
-  // 2. Nếu PDF đọc lặp đôi từ, thử bỏ phần lặp
-  if (word.length % 2 === 0) {
-    const half = word.slice(0, word.length / 2);
-
-    if (half + half === word) {
-      result = lookup(half);
-      if (result) return result;
-    }
+  if (
+    Object.prototype.hasOwnProperty.call(dictionary, word)
+  ) {
+    return dictionary[word];
   }
 
   return null;
+}
+
+
+/*
+  Ví dụ PDF đọc sai:
+
+  卡车车     → 卡车
+  主人人     → 主人
+  工工厂厂   → 工厂
+  工工人人   → 工人
+  平方方     → 平方
+  打工工     → 打工
+
+  Không tự ý xóa chữ lặp hợp lệ.
+  Chỉ chọn từ sửa được nếu có trong từ điển.
+*/
+
+function resolveWord(rawWord) {
+
+  const original = normalizeWord(rawWord);
+
+  // Ưu tiên từ gốc nếu đã có nghĩa
+  let data = findWordData(original);
+
+  if (data) {
+    return {
+      word: original,
+      data: data
+    };
+  }
+
+  // Chia từ thành các nhóm ký tự giống nhau liên tiếp
+  const groups = [];
+
+  for (const char of Array.from(original)) {
+
+    const last = groups[groups.length - 1];
+
+    if (last && last.char === char) {
+      last.count++;
+    } else {
+      groups.push({
+        char: char,
+        count: 1
+      });
+    }
+
+  }
+
+  // Không có chữ lặp thì giữ nguyên
+  if (groups.every(group => group.count === 1)) {
+
+    return {
+      word: original,
+      data: null
+    };
+
+  }
+
+  /*
+    Tạo các cách bỏ bớt chữ lặp.
+
+    Ví dụ 工工厂厂 có thể tạo:
+    工工厂厂
+    工厂厂
+    工工厂
+    工厂
+
+    Chỉ nhận phương án có nghĩa trong từ điển.
+  */
+
+  const candidates = [];
+
+  function generate(index, current, removed) {
+
+    if (index === groups.length) {
+
+      if (removed > 0) {
+
+        const found = findWordData(current);
+
+        if (found) {
+          candidates.push({
+            word: current,
+            data: found,
+            removed: removed
+          });
+        }
+
+      }
+
+      return;
+    }
+
+    const group = groups[index];
+
+    // Giới hạn để tránh tạo quá nhiều tổ hợp
+    const maxCount = Math.min(group.count, 8);
+
+    for (let n = maxCount; n >= 1; n--) {
+
+      generate(
+        index + 1,
+        current + group.char.repeat(n),
+        removed + group.count - n
+      );
+
+    }
+
+  }
+
+  generate(0, "", 0);
+
+  // Ưu tiên phương án cần sửa ít nhất
+  candidates.sort((a, b) => {
+
+    if (a.removed !== b.removed) {
+      return a.removed - b.removed;
+    }
+
+    return b.word.length - a.word.length;
+
+  });
+
+  if (candidates.length > 0) {
+
+    return {
+      word: candidates[0].word,
+      data: candidates[0].data
+    };
+
+  }
+
+  // Không đoán bừa nếu không tìm được từ đúng
+  return {
+    word: original,
+    data: null
+  };
+
+}
+
+
+// Giữ tương thích với những chỗ gọi hàm cũ
+function getWordData(word) {
+  return resolveWord(word).data;
 }
 
 
@@ -314,7 +451,11 @@ function normalizeWord(text) {
 
 function showMeaning(word, event) {
 
-  const data = getWordData(word);
+  const resolved = resolveWord(word);
+
+  const data = resolved.data;
+
+  const correctWord = resolved.word;
 
   const pinyin = data
     ? data[0]
@@ -327,7 +468,7 @@ function showMeaning(word, event) {
   meaning.replaceChildren();
 
   const hanziElement = document.createElement("strong");
-  hanziElement.textContent = word;
+  hanziElement.textContent = correctWord;
 
   const pinyinElement = document.createElement("span");
   pinyinElement.className = "pinyin";
