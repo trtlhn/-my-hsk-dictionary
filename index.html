@@ -362,8 +362,8 @@ fileInput.addEventListener("change", async event => {
 
   try {
     const bytes = await file.arrayBuffer();
-    await openPDF(bytes);
-    await savePDF(bytes);
+await savePDF(bytes);
+await openPDF(bytes);
   } catch (error) {
     statusText.textContent = "Không đọc được PDF";
     alert("Lỗi mở PDF: " + error.message);
