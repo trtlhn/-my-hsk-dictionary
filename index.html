@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HSK Vocabulary</title>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #f7f7f7;
+  text-align: center;
+  padding: 20px;
+}
+
+.word {
+  display: inline-block;
+  padding: 20px;
+  margin: 10px;
+  background: #cce5ff;
+  border-radius: 8px;
+  font-size: 28px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+#meaning {
+  position: fixed;
+  left: 50%;
+  bottom: 20%;
+  transform: translateX(-50%);
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  padding: 15px 25px;
+  box-shadow: 0 4px 15px #0003;
+  display: none;
+  z-index: 100;
+}
+</style>
+</head>
+
+<body>
+
+<h2>HSK Vocabulary</h2>
+<p>Chạm giữ một từ để xem nghĩa</p>
+
+<div class="word" data-pinyin="xuéxí" data-meaning="Học tập">学习</div>
+<div class="word" data-pinyin="jīngyàn" data-meaning="Kinh nghiệm">经验</div>
+<div class="word" data-pinyin="huòdé" data-meaning="Đạt được">获得</div>
+<div class="word" data-pinyin="jiānchí" data-meaning="Kiên trì">坚持</div>
+
+<div id="meaning"></div>
+
+<script>
+const words = document.querySelectorAll(".word");
+const meaning = document.getElementById("meaning");
+
+words.forEach(word => {
+  function show(e) {
+    if (e.cancelable) e.preventDefault();
+    meaning.innerHTML =
+      "<strong>" + word.textContent + "</strong><br>" +
+      word.dataset.pinyin + "<br>" +
+      word.dataset.meaning;
+    meaning.style.display = "block";
+  }
+
+  function hide() {
+    meaning.style.display = "none";
+  }
+
+  word.addEventListener("pointerdown", show);
+  word.addEventListener("pointerup", hide);
+  word.addEventListener("pointercancel", hide);
+  word.addEventListener("pointerleave", hide);
+  word.addEventListener("contextmenu", e => e.preventDefault());
+});
+</script>
+
+</body>
+</html>
