@@ -6,12 +6,12 @@
 <title>HSK Words Visualized</title>
 
 <style>
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
-body {
+html, body {
   margin: 0;
+  width: 100%;
+  height: 100%;
   font-family: Arial, sans-serif;
   background: #f5f5f5;
 }
@@ -35,13 +35,9 @@ button, .file-button {
   cursor: pointer;
 }
 
-.file-button {
-  background: #dcecff;
-}
+.file-button { background: #dcecff; }
 
-input[type="file"] {
-  display: none;
-}
+input[type="file"] { display: none; }
 
 #status {
   font-size: 13px;
@@ -99,13 +95,9 @@ canvas {
   line-height: 1.6;
 }
 
-#meaning strong {
-  font-size: 22px;
-}
+#meaning strong { font-size: 22px; }
 
-#meaning .pinyin {
-  color: #2874b8;
-}
+#meaning .pinyin { color: #2874b8; }
 
 #placeholder {
   padding: 50px 20px;
@@ -153,7 +145,6 @@ const dictionary = {
   "经验": ["jīngyàn", "Kinh nghiệm"],
   "获得": ["huòdé", "Đạt được"],
   "坚持": ["jiānchí", "Kiên trì"],
-
   "努力": ["nǔlì", "Nỗ lực"],
   "成功": ["chénggōng", "Thành công"],
   "失败": ["shībài", "Thất bại"],
@@ -190,6 +181,9 @@ let pageWidth = 0;
 let pageHeight = 0;
 let zoom = 1;
 
+let renderTask = null;
+let renderVersion = 0;
+
 function normalizeWord(text) {
   return text.normalize("NFKC").replace(/\s+/g, "");
 }
@@ -212,7 +206,10 @@ function showMeaning(word, event) {
   let left = event.clientX - box.width / 2;
   let top = event.clientY - box.height - 18;
 
-  left = Math.max(8, Math.min(left, innerWidth - box.width - 8));
+  left = Math.max(
+    8,
+    Math.min(left, innerWidth - box.width - 8)
+  );
 
   if (top < 8) {
     top = event.clientY + 18;
@@ -226,11 +223,54 @@ function hideMeaning() {
   meaning.style.display = "none";
 }
 
-function setZoom(value) {
+async function setZoom(value) {
   zoom = Math.max(0.1, Math.min(value, 3));
 
-  pageBox.style.width = (pageWidth * zoom) + "px";
-  pageBox.style.height = (pageHeight * zoom) + "px";
+  if (!pdfPage) return;
+
+  const version = ++renderVersion;
+
+  if (renderTask) {
+    renderTask.cancel();
+
+    try {
+      await renderTask.promise;
+    } catch (error) {
+      if (error.name !== "RenderingCancelledException") {
+        console.error(error);
+      }
+    }
+  }
+
+  if (version !== renderVersion) return;
+
+  const viewport = pdfPage.getViewport({ scale: zoom });
+  const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+
+  canvas.width = Math.ceil(viewport.width * pixelRatio);
+  canvas.height = Math.ceil(viewport.height * pixelRatio);
+
+  pageBox.style.width = viewport.width + "px";
+  pageBox.style.height = viewport.height + "px";
+
+  const context = canvas.getContext("2d");
+
+  renderTask = pdfPage.render({
+    canvasContext: context,
+    viewport: viewport,
+    transform: [
+      pixelRatio, 0, 0,
+      pixelRatio, 0, 0
+    ]
+  });
+
+  try {
+    await renderTask.promise;
+  } catch (error) {
+    if (error.name !== "RenderingCancelledException") {
+      console.error(error);
+    }
+  }
 }
 
 async function openPDF(bytes) {
@@ -247,16 +287,8 @@ async function openPDF(bytes) {
   pageWidth = viewport.width;
   pageHeight = viewport.height;
 
-  canvas.width = Math.ceil(pageWidth);
-  canvas.height = Math.ceil(pageHeight);
-
   pageBox.style.display = "block";
   document.getElementById("placeholder").style.display = "none";
-
-  await pdfPage.render({
-    canvasContext: canvas.getContext("2d"),
-    viewport: viewport
-  }).promise;
 
   const textContent = await pdfPage.getTextContent();
 
@@ -312,7 +344,12 @@ async function openPDF(bytes) {
     count++;
   }
 
-  setZoom(Math.min(1, (viewer.clientWidth - 20) / pageWidth));
+  const initialZoom = Math.min(
+    1,
+    (viewer.clientWidth - 20) / pageWidth
+  );
+
+  await setZoom(initialZoom);
 
   statusText.textContent = count + " mục từ";
 }
