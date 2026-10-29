@@ -3,81 +3,392 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HSK Vocabulary</title>
+<title>HSK Words Visualized</title>
 
 <style>
+* {
+  box-sizing: border-box;
+}
+
 body {
+  margin: 0;
   font-family: Arial, sans-serif;
-  background: #f7f7f7;
-  text-align: center;
-  padding: 20px;
+  background: #f5f5f5;
+}
+
+header {
+  padding: 12px;
+  background: white;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+button, .file-button {
+  border: 1px solid #ccc;
+  border-radius: 7px;
+  padding: 9px 13px;
+  background: white;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.file-button {
+  background: #dcecff;
+}
+
+input[type="file"] {
+  display: none;
+}
+
+#status {
+  font-size: 13px;
+  color: #666;
+}
+
+#viewer {
+  width: 100%;
+  height: calc(100dvh - 65px);
+  overflow: auto;
+  background: #eee;
+  -webkit-overflow-scrolling: touch;
+}
+
+#page {
+  position: relative;
+  margin: 15px auto;
+  background: white;
+  box-shadow: 0 2px 12px #0002;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#overlay {
+  position: absolute;
+  inset: 0;
 }
 
 .word {
-  display: inline-block;
-  padding: 20px;
-  margin: 10px;
-  background: #cce5ff;
-  border-radius: 8px;
-  font-size: 28px;
-  cursor: pointer;
+  position: absolute;
+  background: transparent;
   user-select: none;
   -webkit-user-select: none;
-  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  touch-action: pan-x pan-y;
 }
 
 #meaning {
   position: fixed;
-  left: 50%;
-  bottom: 20%;
-  transform: translateX(-50%);
-  background: white;
-  border: 1px solid #ccc;
-  border-radius: 10px;
-  padding: 15px 25px;
-  box-shadow: 0 4px 15px #0003;
   display: none;
-  z-index: 100;
+  z-index: 1000;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 13px 18px;
+  box-shadow: 0 4px 20px #0004;
+  text-align: center;
+  min-width: 135px;
+  max-width: 230px;
+  pointer-events: none;
+  line-height: 1.6;
+}
+
+#meaning strong {
+  font-size: 22px;
+}
+
+#meaning .pinyin {
+  color: #2874b8;
+}
+
+#placeholder {
+  padding: 50px 20px;
+  text-align: center;
+  color: #666;
 }
 </style>
 </head>
 
 <body>
 
-<h2>HSK Vocabulary</h2>
-<p>Chạm giữ một từ để xem nghĩa</p>
+<header>
+  <label class="file-button">
+    Chọn bảng PDF
+    <input type="file" id="pdfFile" accept=".pdf,application/pdf">
+  </label>
 
-<div class="word" data-pinyin="xuéxí" data-meaning="Học tập">学习</div>
-<div class="word" data-pinyin="jīngyàn" data-meaning="Kinh nghiệm">经验</div>
-<div class="word" data-pinyin="huòdé" data-meaning="Đạt được">获得</div>
-<div class="word" data-pinyin="jiānchí" data-meaning="Kiên trì">坚持</div>
+  <button id="zoomOut">−</button>
+  <button id="zoomIn">+</button>
+
+  <span id="status">Chưa mở bảng PDF</span>
+</header>
+
+<div id="viewer">
+  <div id="placeholder">
+    Chọn file PDF HSK Words Visualized để bắt đầu.
+  </div>
+
+  <div id="page" style="display:none">
+    <canvas id="canvas"></canvas>
+    <div id="overlay"></div>
+  </div>
+</div>
 
 <div id="meaning"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
 <script>
-const words = document.querySelectorAll(".word");
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+const dictionary = {
+  "学习": ["xuéxí", "Học tập"],
+  "经验": ["jīngyàn", "Kinh nghiệm"],
+  "获得": ["huòdé", "Đạt được"],
+  "坚持": ["jiānchí", "Kiên trì"],
+
+  "努力": ["nǔlì", "Nỗ lực"],
+  "成功": ["chénggōng", "Thành công"],
+  "失败": ["shībài", "Thất bại"],
+  "希望": ["xīwàng", "Hy vọng"],
+  "机会": ["jīhuì", "Cơ hội"],
+  "重要": ["zhòngyào", "Quan trọng"],
+  "决定": ["juédìng", "Quyết định"],
+  "工作": ["gōngzuò", "Công việc"],
+  "生活": ["shēnghuó", "Cuộc sống"],
+  "理解": ["lǐjiě", "Hiểu"],
+  "影响": ["yǐngxiǎng", "Ảnh hưởng"],
+  "选择": ["xuǎnzé", "Lựa chọn"],
+  "提高": ["tígāo", "Nâng cao"],
+  "改变": ["gǎibiàn", "Thay đổi"],
+  "准备": ["zhǔnbèi", "Chuẩn bị"],
+  "认真": ["rènzhēn", "Nghiêm túc"],
+  "责任": ["zérèn", "Trách nhiệm"],
+  "适应": ["shìyìng", "Thích nghi"],
+  "发展": ["fāzhǎn", "Phát triển"],
+  "完成": ["wánchéng", "Hoàn thành"],
+  "解决": ["jiějué", "Giải quyết"]
+};
+
+const fileInput = document.getElementById("pdfFile");
+const viewer = document.getElementById("viewer");
+const pageBox = document.getElementById("page");
+const canvas = document.getElementById("canvas");
+const overlay = document.getElementById("overlay");
 const meaning = document.getElementById("meaning");
+const statusText = document.getElementById("status");
 
-words.forEach(word => {
-  function show(e) {
-    if (e.cancelable) e.preventDefault();
-    meaning.innerHTML =
-      "<strong>" + word.textContent + "</strong><br>" +
-      word.dataset.pinyin + "<br>" +
-      word.dataset.meaning;
-    meaning.style.display = "block";
+let pdfPage = null;
+let pageWidth = 0;
+let pageHeight = 0;
+let zoom = 1;
+
+function normalizeWord(text) {
+  return text.normalize("NFKC").replace(/\s+/g, "");
+}
+
+function showMeaning(word, event) {
+  const data = dictionary[word];
+
+  const pinyin = data ? data[0] : "Chưa có pinyin";
+  const vietnamese = data ? data[1] : "Chưa bổ sung nghĩa tiếng Việt";
+
+  meaning.innerHTML =
+    "<strong>" + word + "</strong><br>" +
+    '<span class="pinyin">' + pinyin + "</span><br>" +
+    vietnamese;
+
+  meaning.style.display = "block";
+
+  const box = meaning.getBoundingClientRect();
+
+  let left = event.clientX - box.width / 2;
+  let top = event.clientY - box.height - 18;
+
+  left = Math.max(8, Math.min(left, innerWidth - box.width - 8));
+
+  if (top < 8) {
+    top = event.clientY + 18;
   }
 
-  function hide() {
-    meaning.style.display = "none";
+  meaning.style.left = left + "px";
+  meaning.style.top = top + "px";
+}
+
+function hideMeaning() {
+  meaning.style.display = "none";
+}
+
+function setZoom(value) {
+  zoom = Math.max(0.1, Math.min(value, 3));
+
+  pageBox.style.width = (pageWidth * zoom) + "px";
+  pageBox.style.height = (pageHeight * zoom) + "px";
+}
+
+async function openPDF(bytes) {
+  statusText.textContent = "Đang đọc bảng PDF...";
+
+  const documentPDF = await pdfjsLib.getDocument({
+    data: new Uint8Array(bytes)
+  }).promise;
+
+  pdfPage = await documentPDF.getPage(1);
+
+  const viewport = pdfPage.getViewport({ scale: 1 });
+
+  pageWidth = viewport.width;
+  pageHeight = viewport.height;
+
+  canvas.width = Math.ceil(pageWidth);
+  canvas.height = Math.ceil(pageHeight);
+
+  pageBox.style.display = "block";
+  document.getElementById("placeholder").style.display = "none";
+
+  await pdfPage.render({
+    canvasContext: canvas.getContext("2d"),
+    viewport: viewport
+  }).promise;
+
+  const textContent = await pdfPage.getTextContent();
+
+  overlay.innerHTML = "";
+
+  let count = 0;
+
+  for (const item of textContent.items) {
+    const word = normalizeWord(item.str || "");
+
+    if (!word) continue;
+
+    const transform = pdfjsLib.Util.transform(
+      viewport.transform,
+      item.transform
+    );
+
+    const x = transform[4];
+    const baseline = transform[5];
+
+    const fontHeight = Math.max(
+      10,
+      Math.hypot(transform[2], transform[3])
+    );
+
+    const hitWidth = Math.max(24, item.width + 8);
+    const hitHeight = Math.max(20, fontHeight + 8);
+
+    const cell = document.createElement("div");
+
+    cell.className = "word";
+
+    cell.style.left = ((x - 4) / pageWidth * 100) + "%";
+    cell.style.top =
+      ((baseline - fontHeight - 4) / pageHeight * 100) + "%";
+
+    cell.style.width = (hitWidth / pageWidth * 100) + "%";
+    cell.style.height = (hitHeight / pageHeight * 100) + "%";
+
+    cell.addEventListener("pointerdown", event => {
+      showMeaning(word, event);
+    });
+
+    cell.addEventListener("pointerup", hideMeaning);
+    cell.addEventListener("pointercancel", hideMeaning);
+    cell.addEventListener("pointerleave", hideMeaning);
+
+    cell.addEventListener("contextmenu", event => {
+      event.preventDefault();
+    });
+
+    overlay.appendChild(cell);
+    count++;
   }
 
-  word.addEventListener("pointerdown", show);
-  word.addEventListener("pointerup", hide);
-  word.addEventListener("pointercancel", hide);
-  word.addEventListener("pointerleave", hide);
-  word.addEventListener("contextmenu", e => e.preventDefault());
+  setZoom(Math.min(1, (viewer.clientWidth - 20) / pageWidth));
+
+  statusText.textContent = count + " mục từ";
+}
+
+fileInput.addEventListener("change", async event => {
+  const file = event.target.files[0];
+
+  if (!file) return;
+
+  try {
+    const bytes = await file.arrayBuffer();
+    await openPDF(bytes);
+    await savePDF(bytes);
+  } catch (error) {
+    statusText.textContent = "Không đọc được PDF";
+    alert("Lỗi mở PDF: " + error.message);
+  }
 });
+
+document.getElementById("zoomIn").onclick = () => {
+  setZoom(zoom * 1.4);
+};
+
+document.getElementById("zoomOut").onclick = () => {
+  setZoom(zoom / 1.4);
+};
+
+window.addEventListener("pointerup", hideMeaning);
+window.addEventListener("pointercancel", hideMeaning);
+
+function openDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open("HSKPosterDB", 1);
+
+    request.onupgradeneeded = () => {
+      request.result.createObjectStore("files");
+    };
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function savePDF(bytes) {
+  try {
+    const db = await openDatabase();
+
+    const transaction = db.transaction("files", "readwrite");
+    transaction.objectStore("files").put(bytes, "poster");
+  } catch (error) {
+    console.log("Không thể lưu PDF:", error);
+  }
+}
+
+async function restorePDF() {
+  try {
+    const db = await openDatabase();
+
+    const transaction = db.transaction("files", "readonly");
+    const request = transaction.objectStore("files").get("poster");
+
+    request.onsuccess = async () => {
+      if (request.result) {
+        try {
+          await openPDF(request.result);
+        } catch (error) {
+          console.log(error);
+        }
+      }
+    };
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+restorePDF();
 </script>
 
 </body>
