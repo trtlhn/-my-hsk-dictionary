@@ -135,6 +135,7 @@ canvas {
 <div id="meaning"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="./hsk5.js"></script>
 
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -189,7 +190,7 @@ function normalizeWord(text) {
 }
 
 function showMeaning(word, event) {
-  const data = dictionary[word];
+const data = dictionary[word] || (window.HSK5_DATA && window.HSK5_DATA[word]);
 
   const pinyin = data ? data[0] : "Chưa có pinyin";
   const vietnamese = data ? data[1] : "Chưa bổ sung nghĩa tiếng Việt";
