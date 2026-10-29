@@ -1,12 +1,16 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <title>HSK Words Visualized</title>
 
 <style>
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 html, body {
   margin: 0;
@@ -35,9 +39,14 @@ button, .file-button {
   cursor: pointer;
 }
 
-.file-button { background: #dcecff; }
+.file-button {
+  background: #dcecff;
+  cursor: pointer;
+}
 
-input[type="file"] { display: none; }
+input[type="file"] {
+  display: none;
+}
 
 #status {
   font-size: 13px;
@@ -73,9 +82,11 @@ canvas {
 .word {
   position: absolute;
   background: transparent;
+
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+
   touch-action: pan-x pan-y;
 }
 
@@ -83,21 +94,38 @@ canvas {
   position: fixed;
   display: none;
   z-index: 1000;
+
   background: white;
   border: 1px solid #ddd;
   border-radius: 10px;
-  padding: 13px 18px;
+
+  padding: 12px 15px;
   box-shadow: 0 4px 20px #0004;
+
   text-align: center;
+
   min-width: 135px;
-  max-width: 230px;
+  max-width: min(260px, 85vw);
+
   pointer-events: none;
   line-height: 1.6;
+
+  overflow-wrap: break-word;
 }
 
-#meaning strong { font-size: 22px; }
+#meaning strong {
+  font-size: 22px;
+}
 
-#meaning .pinyin { color: #2874b8; }
+#meaning .pinyin {
+  color: #2874b8;
+  font-size: 16px;
+}
+
+#meaning .vietnamese {
+  font-size: 14px;
+  color: #333;
+}
 
 #placeholder {
   padding: 50px 20px;
@@ -105,23 +133,31 @@ canvas {
   color: #666;
 }
 </style>
+
 </head>
 
 <body>
 
 <header>
+
   <label class="file-button">
     Chọn bảng PDF
-    <input type="file" id="pdfFile" accept=".pdf,application/pdf">
+    <input
+      type="file"
+      id="pdfFile"
+      accept=".pdf,application/pdf"
+    >
   </label>
 
   <button id="zoomOut">−</button>
   <button id="zoomIn">+</button>
 
-  <span id="status">Chưa mở bảng PDF</span>
+  <span id="status">Đang khởi động...</span>
+
 </header>
 
 <div id="viewer">
+
   <div id="placeholder">
     Chọn file PDF HSK Words Visualized để bắt đầu.
   </div>
@@ -130,44 +166,97 @@ canvas {
     <canvas id="canvas"></canvas>
     <div id="overlay"></div>
   </div>
+
 </div>
 
 <div id="meaning"></div>
 
+
+<!-- THƯ VIỆN ĐỌC PDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="./hsk5.js"></script>
+
+<!-- DỮ LIỆU TỪ VỰNG HSK 5 -->
+<script src="./hsk5.js"></script>
+
 
 <script>
+
+/* =========================================
+   1. CẤU HÌNH PDF
+========================================= */
+
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
+
+/* =========================================
+   2. TỪ ĐIỂN CŨ
+   Chỉ dùng khi từ chưa có trong hsk5.js
+========================================= */
+
 const dictionary = {
-  "学习": ["xuéxí", "Học tập"],
-  "经验": ["jīngyàn", "Kinh nghiệm"],
-  "获得": ["huòdé", "Đạt được"],
-  "坚持": ["jiānchí", "Kiên trì"],
-  "努力": ["nǔlì", "Nỗ lực"],
-  "成功": ["chénggōng", "Thành công"],
-  "失败": ["shībài", "Thất bại"],
-  "希望": ["xīwàng", "Hy vọng"],
-  "机会": ["jīhuì", "Cơ hội"],
-  "重要": ["zhòngyào", "Quan trọng"],
-  "决定": ["juédìng", "Quyết định"],
-  "工作": ["gōngzuò", "Công việc"],
-  "生活": ["shēnghuó", "Cuộc sống"],
-  "理解": ["lǐjiě", "Hiểu"],
-  "影响": ["yǐngxiǎng", "Ảnh hưởng"],
-  "选择": ["xuǎnzé", "Lựa chọn"],
-  "提高": ["tígāo", "Nâng cao"],
-  "改变": ["gǎibiàn", "Thay đổi"],
-  "准备": ["zhǔnbèi", "Chuẩn bị"],
-  "认真": ["rènzhēn", "Nghiêm túc"],
-  "责任": ["zérèn", "Trách nhiệm"],
-  "适应": ["shìyìng", "Thích nghi"],
-  "发展": ["fāzhǎn", "Phát triển"],
-  "完成": ["wánchéng", "Hoàn thành"],
-  "解决": ["jiějué", "Giải quyết"]
+
+  "学习": ["xuéxí", "(Động từ) Học tập"],
+  "经验": ["jīngyàn", "(Danh từ) Kinh nghiệm"],
+  "获得": ["huòdé", "(Động từ) Đạt được, giành được"],
+  "坚持": ["jiānchí", "(Động từ) Kiên trì"],
+
+  "努力": ["nǔlì", "(Động từ/Tính từ) Nỗ lực, cố gắng"],
+  "成功": ["chénggōng", "(Động từ/Danh từ) Thành công"],
+  "失败": ["shībài", "(Động từ/Danh từ) Thất bại"],
+
+  "希望": ["xīwàng", "(Động từ/Danh từ) Hy vọng"],
+  "机会": ["jīhuì", "(Danh từ) Cơ hội"],
+  "重要": ["zhòngyào", "(Tính từ) Quan trọng"],
+
+  "决定": ["juédìng", "(Động từ/Danh từ) Quyết định"],
+  "工作": ["gōngzuò", "(Động từ/Danh từ) Làm việc, công việc"],
+  "生活": ["shēnghuó", "(Động từ/Danh từ) Sinh sống, cuộc sống"],
+
+  "理解": ["lǐjiě", "(Động từ) Hiểu, thấu hiểu"],
+  "影响": ["yǐngxiǎng", "(Động từ/Danh từ) Ảnh hưởng"],
+  "选择": ["xuǎnzé", "(Động từ/Danh từ) Lựa chọn"],
+
+  "提高": ["tígāo", "(Động từ) Nâng cao"],
+  "改变": ["gǎibiàn", "(Động từ/Danh từ) Thay đổi"],
+  "准备": ["zhǔnbèi", "(Động từ/Danh từ) Chuẩn bị"],
+
+  "认真": ["rènzhēn", "(Tính từ) Nghiêm túc"],
+  "责任": ["zérèn", "(Danh từ) Trách nhiệm"],
+  "适应": ["shìyìng", "(Động từ) Thích nghi"],
+
+  "发展": ["fāzhǎn", "(Động từ/Danh từ) Phát triển"],
+  "完成": ["wánchéng", "(Động từ) Hoàn thành"],
+  "解决": ["jiějué", "(Động từ) Giải quyết"]
+
 };
+
+
+/* =========================================
+   3. LẤY DỮ LIỆU TỪ VỰNG
+
+   ƯU TIÊN HSK 5 TRƯỚC
+========================================= */
+
+function getWordData(word) {
+
+  const hsk5 = window.HSK5_DATA || {};
+
+  if (Object.prototype.hasOwnProperty.call(hsk5, word)) {
+    return hsk5[word];
+  }
+
+  if (Object.prototype.hasOwnProperty.call(dictionary, word)) {
+    return dictionary[word];
+  }
+
+  return null;
+}
+
+
+/* =========================================
+   4. CÁC THÀNH PHẦN TRANG WEB
+========================================= */
 
 const fileInput = document.getElementById("pdfFile");
 const viewer = document.getElementById("viewer");
@@ -176,29 +265,68 @@ const canvas = document.getElementById("canvas");
 const overlay = document.getElementById("overlay");
 const meaning = document.getElementById("meaning");
 const statusText = document.getElementById("status");
+const placeholder = document.getElementById("placeholder");
 
 let pdfPage = null;
+
 let pageWidth = 0;
 let pageHeight = 0;
+
 let zoom = 1;
 
 let renderTask = null;
 let renderVersion = 0;
 
+
+/* =========================================
+   5. CHUẨN HÓA CHỮ HÁN
+========================================= */
+
 function normalizeWord(text) {
-  return text.normalize("NFKC").replace(/\s+/g, "");
+
+  return String(text || "")
+    .normalize("NFKC")
+    .replace(/\s+/g, "");
+
 }
 
+
+/* =========================================
+   6. HIỂN THỊ PINYIN VÀ NGHĨA TIẾNG VIỆT
+========================================= */
+
 function showMeaning(word, event) {
-const data = (window.HSK5_DATA && window.HSK5_DATA[word]) || dictionary[word];
 
-  const pinyin = data ? data[0] : "Chưa có pinyin";
-  const vietnamese = data ? data[1] : "Chưa bổ sung nghĩa tiếng Việt";
+  const data = getWordData(word);
 
-  meaning.innerHTML =
-    "<strong>" + word + "</strong><br>" +
-    '<span class="pinyin">' + pinyin + "</span><br>" +
-    vietnamese;
+  const pinyin = data
+    ? data[0]
+    : "Chưa có pinyin";
+
+  const vietnamese = data
+    ? data[1]
+    : "Chưa bổ sung nghĩa tiếng Việt";
+
+  meaning.replaceChildren();
+
+  const hanziElement = document.createElement("strong");
+  hanziElement.textContent = word;
+
+  const pinyinElement = document.createElement("span");
+  pinyinElement.className = "pinyin";
+  pinyinElement.textContent = pinyin;
+
+  const vietnameseElement = document.createElement("span");
+  vietnameseElement.className = "vietnamese";
+  vietnameseElement.textContent = vietnamese;
+
+  meaning.appendChild(hanziElement);
+  meaning.appendChild(document.createElement("br"));
+
+  meaning.appendChild(pinyinElement);
+  meaning.appendChild(document.createElement("br"));
+
+  meaning.appendChild(vietnameseElement);
 
   meaning.style.display = "block";
 
@@ -209,47 +337,92 @@ const data = (window.HSK5_DATA && window.HSK5_DATA[word]) || dictionary[word];
 
   left = Math.max(
     8,
-    Math.min(left, innerWidth - box.width - 8)
+    Math.min(left, window.innerWidth - box.width - 8)
   );
 
   if (top < 8) {
     top = event.clientY + 18;
   }
 
+  if (top + box.height > window.innerHeight - 8) {
+    top = Math.max(8, window.innerHeight - box.height - 8);
+  }
+
   meaning.style.left = left + "px";
   meaning.style.top = top + "px";
+
 }
+
 
 function hideMeaning() {
   meaning.style.display = "none";
 }
 
+
+/* =========================================
+   7. PHÓNG TO PDF SẮC NÉT
+========================================= */
+
 async function setZoom(value) {
+
   zoom = Math.max(0.1, Math.min(value, 3));
 
   if (!pdfPage) return;
 
+  hideMeaning();
+
   const version = ++renderVersion;
 
   if (renderTask) {
+
     renderTask.cancel();
 
     try {
       await renderTask.promise;
     } catch (error) {
+
       if (error.name !== "RenderingCancelledException") {
         console.error(error);
       }
+
     }
+
   }
 
   if (version !== renderVersion) return;
 
-  const viewport = pdfPage.getViewport({ scale: zoom });
-  const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+  const viewport = pdfPage.getViewport({
+    scale: zoom
+  });
 
-  canvas.width = Math.ceil(viewport.width * pixelRatio);
-  canvas.height = Math.ceil(viewport.height * pixelRatio);
+  /*
+    Giới hạn độ phân giải canvas để tránh
+    dùng quá nhiều bộ nhớ khi phóng to.
+  */
+
+  const maxPixels = 28000000;
+
+  const desiredRatio = Math.min(
+    window.devicePixelRatio || 1,
+    2
+  );
+
+  const safeRatio = Math.sqrt(
+    maxPixels / (viewport.width * viewport.height)
+  );
+
+  const pixelRatio = Math.max(
+    0.1,
+    Math.min(desiredRatio, safeRatio)
+  );
+
+  canvas.width = Math.ceil(
+    viewport.width * pixelRatio
+  );
+
+  canvas.height = Math.ceil(
+    viewport.height * pixelRatio
+  );
 
   pageBox.style.width = viewport.width + "px";
   pageBox.style.height = viewport.height + "px";
@@ -257,48 +430,74 @@ async function setZoom(value) {
   const context = canvas.getContext("2d");
 
   renderTask = pdfPage.render({
+
     canvasContext: context,
+
     viewport: viewport,
+
     transform: [
       pixelRatio, 0, 0,
       pixelRatio, 0, 0
     ]
+
   });
 
   try {
+
     await renderTask.promise;
+
   } catch (error) {
+
     if (error.name !== "RenderingCancelledException") {
-      console.error(error);
+      console.error("Lỗi hiển thị PDF:", error);
     }
+
   }
+
 }
 
+
+/* =========================================
+   8. MỞ BẢNG PDF
+========================================= */
+
 async function openPDF(bytes) {
+
   statusText.textContent = "Đang đọc bảng PDF...";
 
+  /*
+    Tạo bản sao dữ liệu.
+    PDF.js có thể chuyển quyền sở hữu bộ nhớ,
+    nên không dùng trực tiếp bản đang lưu.
+  */
+
+  const pdfBytes = new Uint8Array(bytes.slice(0));
+
   const documentPDF = await pdfjsLib.getDocument({
-    data: new Uint8Array(bytes)
+    data: pdfBytes
   }).promise;
 
   pdfPage = await documentPDF.getPage(1);
 
-  const viewport = pdfPage.getViewport({ scale: 1 });
+  const viewport = pdfPage.getViewport({
+    scale: 1
+  });
 
   pageWidth = viewport.width;
   pageHeight = viewport.height;
 
   pageBox.style.display = "block";
-  document.getElementById("placeholder").style.display = "none";
+  placeholder.style.display = "none";
 
   const textContent = await pdfPage.getTextContent();
 
-  overlay.innerHTML = "";
+  overlay.replaceChildren();
 
   let count = 0;
 
   for (const item of textContent.items) {
-    const word = normalizeWord(item.str || "");
+
+    const word = normalizeWord(item.str);
 
     if (!word) continue;
 
@@ -315,22 +514,40 @@ async function openPDF(bytes) {
       Math.hypot(transform[2], transform[3])
     );
 
-    const hitWidth = Math.max(24, item.width + 8);
-    const hitHeight = Math.max(20, fontHeight + 8);
+    const hitWidth = Math.max(
+      24,
+      item.width + 8
+    );
+
+    const hitHeight = Math.max(
+      20,
+      fontHeight + 8
+    );
 
     const cell = document.createElement("div");
 
     cell.className = "word";
 
-    cell.style.left = ((x - 4) / pageWidth * 100) + "%";
+    cell.style.left =
+      ((x - 4) / pageWidth * 100) + "%";
+
     cell.style.top =
       ((baseline - fontHeight - 4) / pageHeight * 100) + "%";
 
-    cell.style.width = (hitWidth / pageWidth * 100) + "%";
-    cell.style.height = (hitHeight / pageHeight * 100) + "%";
+    cell.style.width =
+      (hitWidth / pageWidth * 100) + "%";
+
+    cell.style.height =
+      (hitHeight / pageHeight * 100) + "%";
 
     cell.addEventListener("pointerdown", event => {
+
+      if (event.pointerType === "mouse" && event.button !== 0) {
+        return;
+      }
+
       showMeaning(word, event);
+
     });
 
     cell.addEventListener("pointerup", hideMeaning);
@@ -342,7 +559,9 @@ async function openPDF(bytes) {
     });
 
     overlay.appendChild(cell);
+
     count++;
+
   }
 
   const initialZoom = Math.min(
@@ -352,23 +571,190 @@ async function openPDF(bytes) {
 
   await setZoom(initialZoom);
 
-  statusText.textContent = count + " mục từ";
+  const hsk5Count = Object.keys(
+    window.HSK5_DATA || {}
+  ).length;
+
+  statusText.textContent =
+    count + " mục từ | HSK 5: " +
+    hsk5Count + " từ đã có nghĩa";
+
 }
 
+
+/* =========================================
+   9. LƯU PDF TRONG TRÌNH DUYỆT
+========================================= */
+
+function openDatabase() {
+
+  return new Promise((resolve, reject) => {
+
+    const request = indexedDB.open(
+      "HSKPosterDB",
+      1
+    );
+
+    request.onupgradeneeded = () => {
+
+      const db = request.result;
+
+      if (!db.objectStoreNames.contains("files")) {
+        db.createObjectStore("files");
+      }
+
+    };
+
+    request.onsuccess = () => {
+      resolve(request.result);
+    };
+
+    request.onerror = () => {
+      reject(request.error);
+    };
+
+  });
+
+}
+
+
+/* =========================================
+   10. LƯU FILE PDF
+========================================= */
+
+async function savePDF(bytes) {
+
+  const db = await openDatabase();
+
+  try {
+
+    await new Promise((resolve, reject) => {
+
+      const transaction = db.transaction(
+        "files",
+        "readwrite"
+      );
+
+      transaction.objectStore("files").put(
+        bytes.slice(0),
+        "poster"
+      );
+
+      transaction.oncomplete = resolve;
+
+      transaction.onerror = () => {
+        reject(transaction.error);
+      };
+
+      transaction.onabort = () => {
+        reject(transaction.error);
+      };
+
+    });
+
+  } finally {
+
+    db.close();
+
+  }
+
+}
+
+
+/* =========================================
+   11. TỰ ĐỘNG MỞ PDF ĐÃ LƯU
+========================================= */
+
+async function restorePDF() {
+
+  try {
+
+    const db = await openDatabase();
+
+    const bytes = await new Promise((resolve, reject) => {
+
+      const transaction = db.transaction(
+        "files",
+        "readonly"
+      );
+
+      const request = transaction
+        .objectStore("files")
+        .get("poster");
+
+      request.onsuccess = () => {
+        resolve(request.result);
+      };
+
+      request.onerror = () => {
+        reject(request.error);
+      };
+
+    });
+
+    db.close();
+
+    if (bytes) {
+
+      await openPDF(bytes);
+
+    } else {
+
+      statusText.textContent = "Chưa mở bảng PDF";
+
+    }
+
+  } catch (error) {
+
+    console.error("Không thể khôi phục PDF:", error);
+
+    statusText.textContent =
+      "Chọn bảng PDF để bắt đầu";
+
+  }
+
+}
+
+
+/* =========================================
+   12. CHỌN FILE PDF MỚI
+========================================= */
+
 fileInput.addEventListener("change", async event => {
+
   const file = event.target.files[0];
 
   if (!file) return;
 
   try {
+
     const bytes = await file.arrayBuffer();
-await savePDF(bytes);
-await openPDF(bytes);
+
+    /*
+      LƯU TRƯỚC, MỞ SAU
+      để tránh lỗi DataCloneError.
+    */
+
+    await savePDF(bytes);
+
+    await openPDF(bytes);
+
   } catch (error) {
+
+    console.error(error);
+
     statusText.textContent = "Không đọc được PDF";
+
     alert("Lỗi mở PDF: " + error.message);
+
   }
+
 });
+
+
+/* =========================================
+   13. NÚT PHÓNG TO / THU NHỎ
+========================================= */
 
 document.getElementById("zoomIn").onclick = () => {
   setZoom(zoom * 1.4);
@@ -378,55 +764,24 @@ document.getElementById("zoomOut").onclick = () => {
   setZoom(zoom / 1.4);
 };
 
+
+/* =========================================
+   14. THẢ TAY THÌ ẨN NGHĨA
+========================================= */
+
 window.addEventListener("pointerup", hideMeaning);
+
 window.addEventListener("pointercancel", hideMeaning);
 
-function openDatabase() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open("HSKPosterDB", 1);
+window.addEventListener("blur", hideMeaning);
 
-    request.onupgradeneeded = () => {
-      request.result.createObjectStore("files");
-    };
 
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-async function savePDF(bytes) {
-  try {
-    const db = await openDatabase();
-
-    const transaction = db.transaction("files", "readwrite");
-    transaction.objectStore("files").put(bytes, "poster");
-  } catch (error) {
-    console.log("Không thể lưu PDF:", error);
-  }
-}
-
-async function restorePDF() {
-  try {
-    const db = await openDatabase();
-
-    const transaction = db.transaction("files", "readonly");
-    const request = transaction.objectStore("files").get("poster");
-
-    request.onsuccess = async () => {
-      if (request.result) {
-        try {
-          await openPDF(request.result);
-        } catch (error) {
-          console.log(error);
-        }
-      }
-    };
-  } catch (error) {
-    console.log(error);
-  }
-}
+/* =========================================
+   15. KHỞI ĐỘNG TRANG WEB
+========================================= */
 
 restorePDF();
+
 </script>
 
 </body>
